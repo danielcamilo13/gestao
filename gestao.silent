@@ -1,0 +1,9 @@
+creaear=C:\Daniel\Projetos\scripts\python\template
+apps=CCCAPG_ENS
+biblioteca=API+ALTAIR+AppLibs_SL
+arquitetura=V36SP04F09
+jar=SEGOP_CeControloperativoBrb_LN.jar
+cluster=Cluster_BKS_01
+camada=Intranet
+ambiente=HK
+
