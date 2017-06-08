@@ -1,11 +1,12 @@
-﻿# -*- coding: latin-1 -*-
+﻿# -*- coding: utf-8 -*-
 #Atualizacao de arquivos
 print('########################################')
-print(' Ultima atualizacao 22 de Marco 2017')
+print(' Ultima atualizacao 08 de Junho 2017')
+print(' correcao: opcao EXTRAIR, remocao da pasta obsoleta extracao deixando somente o arquivo jar solicitado')
 print('########################################')
 
-import os, sys, java,re,zipfile
-# import contextlib, zipfile
+import os, sys,re,zipfile
+# import contextlib, zipfile,java
 # import stat,urllib,paramiko,getpass,socket, glob,fnmatch
 # # biblioteca usada pelo CREAEAR
 # from shutil import copytree
@@ -29,9 +30,7 @@ def listar(arg=0):
             arqsys.write('*'*20+'\n')
             arqsys.write('Celula: ' + cellName+'\n')
             arqsys.write('*'*20+'\n')
-            nodes = AdminConfig.list('Node',cell).split()
-            clusters = AdminConfig.list('ServerCluster', cell).split()
-            webservers = AdminTask.listServers('[-serverType WEB_SERVER ]').split()
+            nodes = AdminConfig.list('Node',cell).split(); clusters = AdminConfig.list('ServerCluster', cell).split(); webservers = AdminTask.listServers('[-serverType WEB_SERVER ]').split()
             arqsys.write('---- Clusters ------\n')
             for cl in clusters:
                 clName = AdminConfig.showAttribute(cl,'name')
@@ -62,7 +61,7 @@ def listar(arg=0):
     except:
         print('nao localizado')
       
-def listaarq():
+def listarq():
     cells = AdminConfig.list('Cell').split()
     print('listando arquiteturas associadas as aplicacoes. Iniciando  ...')
     for cell in cells:
@@ -78,27 +77,29 @@ def listaarq():
     arqsys.write('\n')
     apps = AdminApp.list().split()
     for app in apps:
-        librs=AdminApp.view(app, '[ -MapSharedLibForMod [[ ]]]' ).split('\n')    
-        for lib in librs:
-            if lib.startswith('Module:  ') and not lib.endswith('ESCE'):
-                arqsys.write('aplicacao: '+ lib[7:] + ' ; ')
-            if lib.startswith('Shared Libraries:'):
-                libraries = lib[19:]
-                libs = libraries.split('+')
-                for library in libs:
-                    if len(library) != 0:
-                        if not library.startswith('WebSphere:name=API') and not library.startswith('WebSphere:name=ALTAIR')  and not library.startswith('WebSphere:name=AppLibs_SL') and not library.startswith('WebSphere:name=LibreriaArq'):
-                            libraryTT = library[15:].split(',')
-                            arqsys.write('Arquitetura: '+libraryTT[0]+';')
+        try:
+            librs=AdminApp.view(app, '[ -MapSharedLibForMod [[ ]]]' ).split('\n')    
+            for lib in librs:
+                if lib.startswith('Module:  ') and not lib.endswith('ESCE'):
+                    arqsys.write('aplicacao: '+ lib[7:] + ' ; ')
+                if lib.startswith('Shared Libraries:'):
+                    libraries = lib[19:]
+                    libs = libraries.split('+')
+                    for library in libs:
+                        if len(library) != 0:
+                            if not library.startswith('WebSphere:name=API') and not library.startswith('WebSphere:name=ALTAIR')  and not library.startswith('WebSphere:name=AppLibs_SL') and not library.startswith('WebSphere:name=LibreriaArq'):
+                                libraryTT = library[15:].split(',')
+                                arqsys.write('Arquitetura: '+libraryTT[0]+';')
+        except:
+            continue
         arqsys.write('\n')
     ct = 0
     for app in apps:
         ct+=1
-    print('total de aplicacoes ',ct)
+    print('total de aplicacoes %s'%ct)
     print('....execucao finalizada. Veja o arquivo SystemExit.log gerado neste mesmo caminho')
 
 def listabibl():
-    arqsys = open('SystemExit.log','w')
     cells = AdminConfig.list('Cell').split()
     print('listando bibliotecas associadas as aplicacoes. Iniciando  ...')
     for cell in cells:
@@ -114,23 +115,25 @@ def listabibl():
     arqsys.write('\n')
     apps = AdminApp.list().split()
     for app in apps:
-        librs=AdminApp.view(app, '[ -MapSharedLibForMod [[ ]]]' ).split('\n')    
-        for lib in librs:
-            if lib.startswith('Module:  ') and not lib.endswith('ESCE'):
-                arqsys.write('aplicacao: '+ lib[7:] + ' ; ')
-            if lib.startswith('Shared Libraries:'):
-                libraries = lib[19:]
-                libs = libraries.split('+')
-                for library in libs:
-                    if len(library) != 0:
-                        libraryTT = library[15:].split(',')
-                        arqsys.write('Biblioteca: '+libraryTT[0]+';')
-        arqsys.write('\n')
-    arqsys.close()
+        try:
+            librs=AdminApp.view(app, '[ -MapSharedLibForMod [[ ]]]' ).split('\n')    
+            for lib in librs:
+                if lib.startswith('Module:  ') and not lib.endswith('ESCE'):
+                    arqsys.write('aplicacao: '+ lib[7:] + ' ; ')
+                if lib.startswith('Shared Libraries:'):
+                    libraries = lib[19:]
+                    libs = libraries.split('+')
+                    for library in libs:
+                        if len(library) != 0:
+                            libraryTT = library[15:].split(',')
+                            arqsys.write('Biblioteca: '+libraryTT[0]+';')
+            arqsys.write('\n')
+        except:
+            continue
     ct = 0
     for app in apps:
         ct+=1
-    print('total de aplicacoes ',ct)
+    print('total de aplicacoes %s'%ct)
     print('....execucao finalizada. Veja o arquivo SystemExit.log gerado neste mesmo caminho')
     
 def appmodules(app):
@@ -159,8 +162,8 @@ def appmodules(app):
                 else:
                     arqsys.write('nao ha biblioteca associada neste escopo\n')
         
-def exportar(app1,path):
-    if not os.path.exists(path):
+def exportar(app1,path1):
+    if not os.path.exists(path1):
         print('Nao existe o caminho informado')
     else:
         apps = AdminApp.list().split()
@@ -168,15 +171,15 @@ def exportar(app1,path):
             if app1 == 'TODOS':
                 try:
                     print('voce selecionou a opcao TODOS. sera feito export para o caminho %s' %app)
-                    AdminApp.export(app,path + app + '.ear', '[-exportToLocal]')
-                    print('aplicacao exportada no caminho %s' %path)
+                    AdminApp.export(app,path1 + app + '.ear', '[-exportToLocal]')
+                    print('aplicacao exportada no caminho %s' %path1)
                 except:
                     continue
             elif app1 == app:
-                if not os.path.exists(os.path.join(path,app+'.ear')):
-                    AdminApp.export(app,path+'/'+app+'.ear', '[-exportToLocal]')
+                if not os.path.exists(os.path.join(path1,app+'.ear')):
+                    AdminApp.export(app,path1+'/'+app+'.ear', '[-exportToLocal]')
                     print('export do %s' %app)
-                    print('aplicacao exportada no caminho %s' %path)            
+                    print('aplicacao exportada no caminho %s' %path1)            
                     
 def atualizar(app1,path,pathear):
     arqsys = open('SystemExit.log','w')
@@ -210,7 +213,7 @@ def gerar(arg1):
     cells = AdminConfig.list('Cell').split()
     for cell in cells:
         cellName = AdminConfig.showAttribute(cell,'name')
-        print('Nome da céla ', cellName)
+        print('Nome da cÃ©la ', cellName)
         nodes = AdminConfig.list('Node',cell ).split()
         for node in nodes:
             nodeName = AdminConfig.showAttribute(node,'name')
@@ -250,7 +253,7 @@ def gerar(arg1):
     for each in ensamblados:
         if not os.path.exists('EarEstatico/'+each):
             os.mkdir('EarEstatico/'+each[:-1])
-    print('Gerado nas pastas Conf_Aplicaciones e EarEstatico os arquivos necessarios para o ambiente\n. Neste momento voce deve copiar para todas as maquinas. Futuramente os arquivos serãgerados diretamente em todos os servidores')
+    print('Gerado nas pastas Conf_Aplicaciones e EarEstatico os arquivos necessarios para o ambiente\n. Neste momento voce deve copiar para todas as maquinas. Futuramente os arquivos serÃ£gerados diretamente em todos os servidores')
     print('copiando arquivos para servidores')
         
 def instalar(app1,path,cluster):
@@ -279,26 +282,6 @@ def appscluster(silent):
     apls = [str(apl[5:]).strip() for apl in arqsilent.readlines() if apl.startswith('apps=')]
     for a in str(apls).split(','):
         print('aplicacao %s'%a)
-
-
-    # apps = AdminApp.list().split()
-    # for app in apps:
-        # if app != app1:
-            # print(' ')
-        # else:
-            # print(app+ 'produto localizado. Escolha a opcao atualizar')
-            # break
-    # AdminApp.install(''+path+'','[-appname '+app1+' -cluster '+cluster+']')
-    # AdminConfig.save()
-    # configuraear(app1,cluster)
-    # arq_silent = open('instalar.silent','w')
-    # arq_silent.write(app1+'\n')
-    # arq_silent.close()
-    # os.system('chmod 775 instalar.silent')
-    # arg1 = 'instalar.silent'
-    # gerar(arg1)
-    # mapear(app1,cluster)
-
     
 def configuraear(app1,cluster=0):
     #configurando sessao da aplicacao - Aqui foi usado o script que tinha sido preparado pelo Flavio Monastirscy
@@ -349,7 +332,7 @@ def configuraear(app1,cluster=0):
     attrs = ['config', id]
     AdminConfig.modify(targetMappings,[attrs])
     AdminConfig.save()
-    print('Efetuado a configuraç de gerenciamento de sessãda aplicacao')
+    print('Efetuado a configuraÃ§ de gerenciamento de sessÃ£da aplicacao')
  
 def sincroniza():
     arq_sync = open('sync.py','w')
@@ -360,7 +343,7 @@ def sincroniza():
         for node in nodes:
             nodeName = AdminConfig.showAttribute(node,'name')
             servers = AdminControl.queryNames('type=Server,cell='+cellName+',node='+nodeName+',*').split()
-            # éecessáo criar aqui um processo que verifique se o nótáo ar para poder disparar a sincronizacao full.
+            # Ã©ecessÃ¡o criar aqui um processo que verifique se o nÃ³tÃ¡o ar para poder disparar a sincronizacao full.
             if not nodeName.startswith('Dmgr') and not nodeName.startswith('IHS'):
                 arq_sync.write('sync1 = AdminControl.completeObjectName(\'type=NodeSync,process=nodeagent,node='+nodeName+',*\')\n')
                 arq_sync.write('AdminControl.invoke(sync1, \'sync\')\n')
@@ -469,9 +452,6 @@ def cfgbiblioteca2(ens,arq,bibl):
         if app == ens:
             print('aplicacao localizada ', app)
             AdminApp.edit(ens2, '[ -MapSharedLibForMod [[ '+ens2+' META-INF/application.xml ARQ_RIGEL_'+arq2+'+'+bibl2+' ]]]')
-            # # AdminApp.edit(app, '[ -MapSharedLibForMod [[ '+app+' META-INF/application.xml ARQ_RIGEL_'+arq+bibl+' ]]]' )        
-            # AdminApp.edit(app, '[ -MapSharedLibForMod [[ '+app+' META-INF/application.xml API+ALTAIR+AppLibs_SL+ARQ_RIGEL_'+arq+' ]]]' )                    
-            # AdminApp.edit(app, '[ -MapSharedLibForMod [[ '+app+' META-INF/application.xml API+ALTAIR+ARQ_RIGEL_'+arq+' ]]]' )
             librs=AdminApp.view(app, '[ -MapSharedLibForMod [[ ]]]' ).split('\n')    
             for lib in librs:
                 if lib.endswith('web.xml'):
@@ -480,7 +460,6 @@ def cfgbiblioteca2(ens,arq,bibl):
                     esce = modweb.split('.')[0]
                     hash = esce + modweb
                     print('hash', hash)
-                    #AdminApp.edit('ANOTAL_ENS', '[ -MapInitParamForServlet [[ ANOTAL_ESCE ANOTAL_ESCE.war,WEB-INF/web.xml RigelBootStrapServlet bootStrapEncryptConfig null file:/ArquitecturaE-business/Xml/CfgRigelV36SP4F09/gaia/ConfigurationManager.xml ]]]' ) 
                     AdminApp.edit(app, '[ -MapInitParamForServlet [[ '+hash+' RigelBootStrapServlet bootStrapEncryptConfig null file:/ArquitecturaE-business/Xml/CfgRigel'+arq2+'/gaia/ConfigurationManager.xml ][ '+hash+' RigelBootStrapServlet urlConfig null file:/ArquitecturaE-business/Xml/CfgRigel'+arq2+'/gaia/kernel.xml ][ '+hash+' RigelBootStrapServlet variableConfigPath null /ArquitecturaE-business/Xml/CfgRigel'+arq+'/RigelJars_Configuration ]]]' )
                     AdminApp.edit(app, '[ -MapInitParamForServlet [[ '+hash+' RigelBootStrapServlet bootStrapEncryptConfig null file:/ArquitecturaE-business/Xml/CfgRigel'+arq2+'/gaia/ConfigurationManager.xml ][ '+hash+' RigelBootStrapServlet urlConfig null file:/ArquitecturaE-business/Xml/CfgRigel'+arq2+'/gaia/kernel.xml ][ '+hash+' RigelBootStrapServlet variableConfigPath null /ArquitecturaE-business/Xml/CfgRigel'+bib+'/RigelJars_Configuration ]]]' )
         # AdminConfig.save()                    
@@ -521,10 +500,8 @@ def bulkarq(arq):
                 arqapps.write('AdminApp.edit(\'%s\',\'[ -MapInitParamForServlet [[ %s RigelBootStrapServlet bootStrapEncryptConfig null file:/ArquitecturaE-business/Xml/CfgRigel%s/gaia/ConfigurationManager.xml ][ %s RigelBootStrapServlet urlConfig null file:/ArquitecturaE-business/Xml/CfgRigel%s/gaia/kernel.xml ][ %s RigelBootStrapServlet variableConfigPath null /ArquitecturaE-business/Xml/CfgRigel%s/RigelJars_Configuration ]]]\')\n' %(app,hash,arq,hash,arq,hash,arq))
     arqapps.write('AdminConfig.save()\n')
     arqapps.close()
-    #execfile('apps.py')
     print('gerado o arquivo gerado apps.py com todas as aplicacoes')
     print('Linha da execucao esta comentada.')
-
     
 def stopapps(aplicacao):
     #parando a aplicacao
@@ -549,7 +526,7 @@ def stopapps(aplicacao):
                                 print('aplicacao '+apl+' esta parada ')
                                 
 def statusapps():
-    #Status das aplicaçs
+    #Status das aplicaÃ§s
     arqsys=open('SystemExit.log','w')
     cells = AdminConfig.list('Cell').split()    
     for cell in cells:
@@ -572,10 +549,10 @@ def statusapps():
                             arqsys.write('mbean: '+ objName+ '\n')
                         print('mbeans ativos', ct)
                         arqsys.write('Processos mbeans ativos: '+ str(ct)+'\n')
-                        arqsys.write('aplicaç em execucao')
+                        arqsys.write('aplicaÃ§ em execucao')
                     else:
                         print('aplicacao parada')
-                        arqsys.write('aplicaç parada')
+                        arqsys.write('aplicaÃ§ parada')
     arqsys.close()
                                 
 def startapps(aplicacao):    
@@ -617,6 +594,7 @@ def coleta_servidores():
             print('No: '+ nodeName + ' -- hostname '+  nodeHostName)
             arqsrv.write(nodeHostName+'\n')        
     arqsrv.close()
+    print('gerado o arquivo servidores.silent com todos os nÃ³s deste ambiente')
 
 def sgs(usr,pwd):
     print('funcao SGS acionada')
@@ -686,7 +664,7 @@ def sgs(usr,pwd):
     arq_run.write('arqsys.close()\n')
     arq_run.close()   
     # os.system('python\python.exe run_windows.py')
-    print('gerado o arquivo servidores.silent. Favor executar o arquivos run.py para restart do serviçde SGS')
+    print('gerado o arquivo servidores.silent. Favor executar o arquivos run.py para restart do serviÃ§de SGS')
 
 def repliweb(usr,pwd):
     print('este metodo ira gerar duas rotinas. SERVIDORES.SH para o restart - necessario passar usuario e senha e uma rotina que usa o  paramiko para execucao no windows. ambas sao automaticas')
@@ -725,20 +703,11 @@ def repliweb(usr,pwd):
     arq_run.write('        chan.get_pty()\n')
     arq_run.write('        f = chan.makefile()\n')
     arq_run.write('        chan.exec_command(\'sudo /etc/init.d/./xinetd restart\')\n')
-    # arq_run.write('        arqsys.write(\' Server %s Status %s\' % readl.strip(), % chan.recv_exit_status())\n')    	
-    # arq_run.write('        chan.exec_command(\'sudo /usr/repliweb/rds/controller/scheduler/bin/stop_sched.sh\')\n')
-    # arq_run.write('        arqsys.write(\' Status %s\' % chan.recv_exit_status())\n')    	
-    # arq_run.write('        chan.exec_command(\'sudo /usr/bin/repliweb_scheduler -start\')\n')	
-    # arq_run.write('        arqsys.write(\' Status %s\' % chan.recv_exit_status())\n')    	
-    # arq_run.write('        print(f.read())\n')
     arq_run.write('        ssh.close()\n')
     arq_run.write('    except:\n')
     arq_run.write('        continue\n')
     arq_run.write('arq_read.close()\n')    
     arq_run.close()   
-    # arq_run.write('        chan.exec_command(\'sudo /usr/repliweb/rds/controller/scheduler/bin/stop_sched.sh\')\n')
-    # arq_run.write('        chan.exec_command(\'sudo /usr/bin/repliweb_scheduler -start\')\n')
-    # arq_run.write('        chan.exec_command(\'sudo /usr/bin/repliweb_scheduler -start\')\n')
     print('gerado o arquivo SERVIDORES.SH para executar manualmente ')
     
 def creaear(app1,silent):
@@ -774,21 +743,21 @@ def creaear(app1,silent):
     zip_ear(path,jar)
     input('clique em ENTER para finalizar o processo')
 
-def zip_ear(app1,path,jar=0):
+def zip_ear(app1,path1,path3=0,jar=0):
     if jar !=0:
         print('valor do jar %s' %jar)
     else:
         print('valor diferente do jar %s'%jar)
+    print('caminho %s'%path1)
     arqzip=open('extrair.py','w')
     arqzip.write('import os,sys,contextlib, zipfile\n')
-    arqzip.write('print(\'compactacao do jar %s. Aplicacao %s\')\n'%(jar,app1))
-    arqzip.write('zipf = zipfile.ZipFile(\'%s%s1\',\'w\')\n'%(path,jar))
-    arqzip.write('os.chdir(\'%s%s\')\n'%(path,jar))
+    arqzip.write('zipf = zipfile.ZipFile(\'%sswap/%s\',\'w\')\n'%(path1,jar))
+    arqzip.write('os.chdir(\'%s\')\n'%(path3))
     arqzip.write('for dirname,subdirs,files in os.walk(\'.\'):\n')
     arqzip.write('    for file in files:\n')
     arqzip.write('        zipf.write(os.path.join(dirname,file))\n')
     arqzip.write('zipf.close()\n')
-    arqzip.write('print(\'compactacao do jar %s. realizada com sucesso. consultar o arquivo no caminho %s\')\n'%(jar,path))
+    arqzip.write('print(\'Jar %s compactado. Consultar o arquivo no caminho %s/swap. Aplicacao %s\')\n'%(jar,path1,app1))
     arqzip.close()
     os.system('chmod 775 extrair.py')
     os.system('python extrair.py')    
@@ -874,8 +843,8 @@ def bulk(file=0):
     print(wserver)
 
 def embeddor():
-    print('Esta opcao faz a extracao do conteudo de CELLID configurado e realiza o embeddor das aplicações')
-    print('Esta sendo usada a biblioteca urllib pois é a ultima disponivel na versao do jython atualmente instalada')
+    print('Esta opcao faz a extracao do conteudo de CELLID configurado e realiza o embeddor das aplicaÃ§Ãµes')
+    print('Esta sendo usada a biblioteca urllib pois Ã© a ultima disponivel na versao do jython atualmente instalada')
     arqemb = open('embeddor.log','w')
 
     cells = AdminConfig.list('Cell').split()
@@ -887,7 +856,7 @@ def embeddor():
             apps = AdminApp.list().split()
             if variableName == 'CELLID':
                 cellValue = AdminConfig.showAttribute(variable,'value')
-                print('Valor da varíavel CELLID desta célula %s' %cellValue)
+                print('Valor da varÃ­avel CELLID desta cÃ©lula %s' %cellValue)
                 for app in apps:
                     try:
                         print('%s/%s/Embeddor'%(cellValue,app))
@@ -918,31 +887,28 @@ def embeddor():
     os.system('python run.py')
     print('gerado o arquivo embeddor_result.log com o resultado do embeddor')
     
-        
-def extrair(app1,path,jar,env,camada):
+def extrair(app1,path1,jar,env,camada):
     print('A funcao EXTRAIR exporta a aplicacao, extrai o arquivo que esta no argumento do arquivo .jar e modifica o conteudo de acordo com o ambiente e a camada')
-    print('Argumentos informados: \naplicacao=%s \ncaminho=%s \njar=%s \nambiente=%s \ncamada=%s'%(app1,path,jar,env,camada))
-    print('Atenção, neste momento esta funcao esta preparada para modificar somente de HG para qualquer outra opcao')
-    exportar(app1,path)
-    if not os.path.exists(path+'/swap/extracao') and not os.path.exists(path+'/swap/%s'%jar):
-        os.mkdir(path+'/swap/')
-        os.mkdir(path+'/swap/extracao')
-        os.mkdir(path+'/swap/%s'%jar)
-        path2=path+'swap/extracao'
-        print('Pasta swap/extracao criada')
+    print('Argumentos informados: \naplicacao=%s \ncaminho=%s \njar=%s \nambiente=%s \ncamada=%s'%(app1,path1,jar,env,camada))
+    exportar(app1,path1)
+    if not os.path.exists(path1+'swap/extracao'): #and not os.path.exists(path+'/swap/extracao/extracao-%s'%jar):
+        os.system('mkdir %s/swap/extracao/extracao_%s -p'%(path1,jar))
+        path2=path1+'swap/extracao'
+        path3=path1+'swap/extracao/extracao_%s'%jar
+        print('Pasta %s/swap/extracao criada'%path1)
     else:
-        path2 = path+'swap'
-        os.system('rm -rf %s' %path2)
-        os.mkdir(path2)
-        os.mkdir(path+'/%s'%jar)
+        os.system('rm -rf %s/swap/'%path1)
+        os.system('mkdir %s/swap/extracao/extracao_%s -p'%(path1,jar))
+        path2=path1+'swap/extracao'
+        path3=path1+'swap/extracao/extracao_%s'%jar
+        print('Pasta swap localizada. Removendo...')
         print('Pasta swap re-criada')
         
     arqzip=open('extrair.py','w')
     arqzip.write('print(\'Primeira etapa: descompactando o ensamblado\')\n')
     arqzip.write('import os,sys,contextlib, zipfile \n\n')
-    arqzip.write('with contextlib.closing(zipfile.ZipFile(\'%s/%s.ear\',\'r\')) as unz:\n'%(path,app1))
+    arqzip.write('with contextlib.closing(zipfile.ZipFile(\'%s/%s.ear\',\'r\')) as unz:\n'%(path1,app1))
     arqzip.write('    unz.extractall(\'%s\')\n\n'%path2)
-    arqzip.write('print(\'Pacote extraido no caminho %s\')\n'%path2)
     arqzip.close()
     os.system('chmod 775 extrair.py')
     os.system('python extrair.py')
@@ -951,23 +917,23 @@ def extrair(app1,path,jar,env,camada):
     arqzip.write('print(\'Segunda etapa: descompactando o jar\')\n')    
     arqzip.write('import os,sys,contextlib, zipfile \n\n')
     arqzip.write('with contextlib.closing(zipfile.ZipFile(\'%s/%s\',\'r\')) as unz:\n'%(path2,jar))
-    arqzip.write('    unz.extractall(\'%s/swap/%s/\')\n\n'%(path,jar))
-    arqzip.write('print(\'Pacote extraido no caminho %s/swap/%s \')\n'%(path,jar))
+    arqzip.write('    unz.extractall(\'%s\')\n\n'%(path3))
+    arqzip.write('print(\'Jar extraido no caminho %s\')\n'%(path3))
     arqzip.close()
     os.system('chmod 775 extrair.py')
     os.system('python extrair.py') 
     
     if jar == 'SEGOP_CeControloperativoBrb_LN.jar':
-        modifica_segop(path,jar,env)        
+        modifica_segop(path3,jar,env)        
     elif jar =='resource.jar':
-        bla=0
-        modifica_resource(path,jar,camada)
-    zip_ear(app1,path,jar)
+        modifica_resource(path3,jar,camada)
+    zip_ear(app1,path1,path3,jar)
+    os.system('rm -rf %s/swap/extracao'%path1)
+    print('Pasta de extracao removida')
+    print('Arquivo modificado esta no caminho %sswap'%path1)
 
-def modifica_resource(path,jar,camada):    
-    print('para esta ação indifere para qual ambiente voce esta configurando')
-    print('Atualmente apenas os arquivos applicationSettings.xml e variableCfgSelector.xml estao sendo modificados')
-    print('Terceira etapa: Modificar o jar %s\')\n'%jar)
+def modifica_resource(path3,jar,camada):    
+    print('para esta aÃ§Ã£o indifere para qual ambiente voce esta configurando\n Atualmente apenas os arquivos applicationSettings.xml e variableCfgSelector.xml estao sendo modificados \n Terceira etapa: Modificar o jar %s\')\n'%jar)
     
     arqmod=open('extrair.py','w')
     arqmod.write('# _*_ coding:utf-8 _*_\n')
@@ -1013,7 +979,7 @@ def modifica_resource(path,jar,camada):
     os.system('chmod 775 extrair.py')
     os.system('python extrair.py') 
  
-def modifica_segop(path,jar,env):    
+def modifica_segop(path3,jar,env):    
     if env=='PRE':
         env='MQCICK'
     elif env=='PRO':
@@ -1023,26 +989,32 @@ def modifica_segop(path,jar,env):
     arqmod.write('import os,re,sys\n')
     arqmod.write('env = \'%s\'\n'%env)  
     arqmod.write('new=\'\'\n')  
-    arqmod.write('for dirname,subdirs,files in os.walk(\'%s%s\'):\n'%(path,jar))  
+    arqmod.write('amb=r\'MQCICG\'\n')  
+    arqmod.write('ambq=r\'MQCICK\'\n')  
+    arqmod.write('ambp=r\'MQCICP\'\n')  
+    arqmod.write('for dirname,subdirs,files in os.walk(\'%s\'):\n'%(path3))  
     arqmod.write('    for filename in files:\n')  
     arqmod.write('        if filename == \'SEGOP_ControlOperativo.properties\':\n')  
+    arqmod.write('            newfile = open(dirname+\'/SEGOP_ControlOperativo.properties1\',\'w\')\n')
     arqmod.write('            with open(dirname+\'/\'+filename,\'r+\') as segop:\n')  
     arqmod.write('                linhas = segop.readlines()\n')  
-    arqmod.write('                amb=r\'MQCICG\'\n')  
-    arqmod.write('                for linha in linhas:\n')  
-    arqmod.write('                    if linha.startswith(\'USUARIO\'):\n')
-    arqmod.write('                        if re.search(amb,linha):\n')
-    arqmod.write('                            new=re.sub(amb,env,linha)\n')
-    arqmod.write('                        else:\n')
-    arqmod.write('                            print(\'este arquivo nao esta como HG. Continuando...\')\n')
+    arqmod.write('                for linha in linhas:\n')
+    arqmod.write('                    if re.search(ambq,linha):\n')
+    arqmod.write('                        print(\'achei %s\'%linha)\n')
+    arqmod.write('                        newfile.write(re.sub(ambq,env,linha))\n')
+    arqmod.write('                    elif re.search(amb,linha):\n')
+    arqmod.write('                        print(\'achei %s\'%linha)\n')
+    arqmod.write('                        newfile.write(re.sub(amb,env,linha))\n')
+    arqmod.write('                    else:\n')
+    arqmod.write('                        newfile.write(linha)\n')
+    arqmod.write('            newfile.close()\n')
+    # arqmod.write('            os.system(\'rm SEGOP_ControlOperativo.properties\')\n')
+    arqmod.write('            os.rename(dirname+\'/SEGOP_ControlOperativo.properties1\',dirname+\'/SEGOP_ControlOperativo.properties\')\n')
     arqmod.write('            print(\'arquivo modificado %s/%s\'%(dirname,filename))\n')
-    arqmod.write('            with open(dirname+\'/\'+filename,\'w\') as segop:\n')
-    arqmod.write('                segop.write(\'#Usuario para las transacciones Altair\\n\')\n')
-    arqmod.write('                segop.write(\'USUARIO_ALTAIR=%s\\n\'%env)\n') 
     arqmod.close()
     os.system('chmod 775 extrair.py')
     os.system('python extrair.py') 
- 
+
 def transacao():
     print('estao opcao foi preparada para aumentar em tempo de timeout de tempo de vida de transacao')
     cells = AdminConfig.list('Cell').split()    
@@ -1106,17 +1078,13 @@ def mod_amb(jarx2,ambx):
     arq_ema.write('zf.close() \n')      
     arq_ema.close()
     os.system('python ema.py')
-    
-# esta é linha para editar na console do websphere 
-# AdminApp.edit('SAMXFI_ENS', '[ -MapInitParamForServlet [[ SAMXFI_ESCE SAMXFI_ESCE.war,WEB-INF/web.xml RigelBootStrapServlet variableCfgSelector null Brasil_Internet ]]]' )     
-    
+       
 ######## menu principal ##########
-
 try:
-    arqsys = open('SystemExit.log','a')
+    arqsys = open('SystemExit.log','w')
     if len(sys.argv)==0:
         print('Nenhum argumento informado')
-        print('argumentos disponiveis: ATUALIZAR, ATUALIZAEAR, BIBLIOTECA, BULK, CONFIGURAR, CREAREAR, EMA, EMBEDDOR, EXPORTAR, GERAR, INICIAR, INSTALAR, LISTAR, PARAR, SESSAO, SGS, SINCRONIZAR e TRANSACAO. para AJUDA nao use argumentos')  
+        print('argumentos disponiveis: ATUALIZAR, ATUALIZAEAR, BIBLIOTECA, BULK, CONFIGURAR, CREAREAR, EMA, EMBEDDOR, EXPORTAR, GERAR, INICIAR, INSTALAR, LISTARQ,LISTAR, PARAR, SESSAO, SGS, SINCRONIZAR e TRANSACAO. para AJUDA nao use argumentos')  
     elif sys.argv[0] == 'LISTAR':
         if len(sys.argv) == 2:
             arg = sys.argv[1]
@@ -1127,7 +1095,6 @@ try:
             listar()
     elif sys.argv[0] == 'UNSESSION':
         unsession()
-        
     elif sys.argv[0]=='EXPORTAR':
         if len(sys.argv) == 3:
             if sys.argv[1]=='TODOS':
@@ -1141,13 +1108,11 @@ try:
             print('informar nome do ensamblado e o caminho para exportar')
     elif sys.argv[0]=='ATUALIZAR':
         if len(sys.argv)==4:
-            app1 = sys.argv[1]
-            path = sys.argv[2]
-            pathear = sys.argv[3]
+            app1 = sys.argv[1]; path = sys.argv[2];pathear = sys.argv[3]
             print('Ensamblado: ' + app1 + ' - Caminho origem: ' + path + ' - Caminho destino: ' + pathear)
             atualizar(app1,path,pathear)
         else:
-            print('nãfoi informado os argumentos necessáos')        
+            print('nÃ£foi informado os argumentos necessÃ¡os')        
     elif sys.argv[0]=='GERAR':
         if len(sys.argv) == 2:
             arg1 = sys.argv[1]
@@ -1156,9 +1121,7 @@ try:
             print('informar nome do arquivo')               
     elif sys.argv[0] == 'INSTALAR':
         if len(sys.argv)==4:
-            app1 = sys.argv[1]
-            path = sys.argv[2]
-            cluster = sys.argv[3]
+            app1 = sys.argv[1]; path = sys.argv[2]; cluster = sys.argv[3]
             instalar(app1,path,cluster)        
         else:
             print('favor informar a aplicacao e o cluster a ser instalado')
@@ -1170,16 +1133,11 @@ try:
     elif sys.argv[0] == 'ATUALIZAEAR':
         if len(sys.argv)==4:
             print('opcao escolhida %s' %sys.argv[0])
-            print('app %s' %sys.argv[1])
-            print('caminho %s' %sys.argv[2])
-            print('Cluster %s' %sys.argv[3])        
-            app1 = sys.argv[1]
-            path = sys.argv[2]
-            cluster = sys.argv[3]
+            print('app %s. caminho %s. Cluster %s' %(sys.argv[1],sys.argv[2],sys.argv[3]))
+            app1 = sys.argv[1]; path = sys.argv[2]; cluster = sys.argv[3]
             atualizaear(app1,path,cluster)        
         else:
             print('favor informar a aplicacao e o cluster a ser instalado')
-
     elif sys.argv[0] == 'CONFIGURAR':
         print('opcao escolhida', sys.argv[0])
         if len(sys.argv)==3:
@@ -1195,14 +1153,11 @@ try:
             cfgbiblioteca(silent)
         else:
             print('favor informar o arquivo silent para configurao de bibliotecas de forma nao-assistidas')
-            
     elif sys.argv[0] == 'CONFIGURA_MAPEAMENTO':
         print('opcao indisponivel', sys.argv[0])
-
     elif sys.argv[0] == 'BULK':
         file = sys.argv[1]
         bulk(file)
-        
     elif sys.argv[0] == 'SGS':
         if len(sys.argv)==3:
             usr=sys.argv[1]
@@ -1213,9 +1168,9 @@ try:
     elif sys.argv[0] == 'SESSAO':
         app1 = sys.argv[1]
         configuraear(app1)
-    elif sys.argv[0] == 'LISTA-ARQUITETURAS':
-        listaarq()
-    elif sys.argv[0] == 'LISTA-BIBLIOTECAS':
+    elif sys.argv[0] == 'LISTARQ':
+        listarq()
+    elif sys.argv[0] == 'LISTALIB':
         listabibl()    
     elif sys.argv[0] == 'TRANSACAO':
         transacao()
@@ -1231,11 +1186,10 @@ try:
         embeddor()
     elif sys.argv[0] == 'EXTRAIR':
         if len(sys.argv)==6:
-            app1 = sys.argv[1]; path = sys.argv[2]; jar = sys.argv[3]; env = sys.argv[4]; camada = sys.argv[5]
-            extrair(app1,path,jar,env,camada)
+            app1 = sys.argv[1]; path1 = sys.argv[2]; jar = sys.argv[3]; env = sys.argv[4]; camada = sys.argv[5]
+            extrair(app1,path1,jar,env,camada)
         else:
-            print('argumentos: ensamblado, caminho, jar, ambiente (PRE/PRO) e camada (Internet/Intranet/Internet)')
-            print('arquivos pre-definidos para modificacao: SEGOP_CeControloperativoBrb_LN.jar, resource.jar e langs em andamento')
+            print('argumentos: ensamblado, caminho, jar, ambiente (PRE/PRO) e camada (Internet/Intranet/Internet) \n Arquivos pre-definidos para modificacao: SEGOP_CeControloperativoBrb_LN.jar, resource.jar e langs em andamento')
     elif sys.argv[0] == 'REPLIWEB':
         if len(sys.argv)==3:
             usr=sys.argv[1]
@@ -1243,25 +1197,21 @@ try:
             repliweb(usr,pwd)
         else:
             print('Favor informar usuario e senha')
-
     elif sys.argv[0] == 'UPDARQ':
         if len(sys.argv)==2:
             arq = sys.argv[1]
             bulkarq(arq)
         else:
-            print('necessário informar arquitetura que alterara todas as aplicações do ambiente ')
-            
+            print('necessÃ¡rio informar arquitetura que alterara todas as aplicaÃ§Ãµes do ambiente ')
     elif sys.argv[0] == 'CREAEAR':
         app1 = sys.argv[1]
         silent = sys.argv[2]
         creaear(app1,silent)
-
     elif sys.argv[0] == 'MAPEAR':
         if len(sys.argv)== 3:
             app1 = sys.argv[1]
             cluster = sys.argv[2]
             mapear(app1,cluster)
-
     elif sys.argv[0] == 'APPCLUSTER':
         if len(sys.argv)==1:
             silent = sys.argv[1]
@@ -1270,7 +1220,7 @@ try:
             print('necessario informar o arquivo silent para instalacao')
     elif sys.argv[0]== 'AJUDA':
         print('*'* 120)
-        print('Favor informar como parametro uma das opcoes: ATUALIZAR, ATUALIZAEAR, BIBLIOTECA, BULK, CONFIGURA_BIBLIOTECA, CONFIGURA_MAPEAR, CONFIGURAR, CREAEAR, INSTALAR, EXPORTAR, GERAR, LISTA-BIBLIOTECAS, LISTA-ARQUITETURAS,LISTAR MAPEAR ou SINCRONIZAR')
+        print('Favor informar como parametro uma das opcoes: ATUALIZAR, ATUALIZAEAR, BIBLIOTECA, BULK, CONFIGURA_BIBLIOTECA, CONFIGURA_MAPEAR, CONFIGURAR, CREAEAR, INSTALAR, EXPORTAR, GERAR, LISTALIB, LISTARQ,LISTAR, MAPEAR ou SINCRONIZAR')
         print('### Rotina criada para uso da equipe de gestao de cambios / configuracao e despliegue       ###')
         print('### permite atualizar, exportar, instalar,gerar, listar e sincronizar as aplicacoes         ###')
         print('### abaixo exemplo de sintaxe                                                               ###')
@@ -1306,5 +1256,8 @@ try:
         print('### gestao.py SESSAO ENS_ENS                              | sincronizacao de todo o ambiente                                               ###')
         print('### gestao.py SINCRONIZAR                                 | sincronizacao de todo o ambiente                                               ###')
         print('*'* 120)
+    else:  
+        print('Nenhum argumento localizado')
 finally:
     arqsys.close()
+
