@@ -1,8 +1,8 @@
 ﻿# -*- coding: utf-8 -*-
 #Atualizacao de arquivos
 print('########################################')
-print(' Ultima atualizacao 08 de Junho 2017')
-print(' correcao: opcao EXTRAIR, remocao da pasta obsoleta extracao deixando somente o arquivo jar solicitado')
+print(' Ultima atualizacao 16 de Junho 2017')
+print(' Inclusão da variavel CELLID na funcao LISTAR')
 print('########################################')
 
 import os, sys,re,zipfile
@@ -26,9 +26,16 @@ def listar(arg=0):
         apps = AdminApp.list().split()
         for cell in cells:
             cellName = AdminConfig.showAttribute(cell,'name')
+            variables = AdminConfig.list('VariableSubstitutionEntry',cell).split()
             print('Nome da Celula: ' + cellName)
+            for variable in variables:
+                variableLinkName = AdminConfig.showAttribute(variable,'symbolicName')
+                variableName = AdminConfig.showAttribute(variable,'value')
+                if variableLinkName == 'CELLID':
+                    print('Variavel CELLID: %s'%variableName)            
             arqsys.write('*'*20+'\n')
             arqsys.write('Celula: ' + cellName+'\n')
+            arqsys.write('Variavel CELLID: %s\n'%variableName)            
             arqsys.write('*'*20+'\n')
             nodes = AdminConfig.list('Node',cell).split(); clusters = AdminConfig.list('ServerCluster', cell).split(); webservers = AdminTask.listServers('[-serverType WEB_SERVER ]').split()
             arqsys.write('---- Clusters ------\n')
