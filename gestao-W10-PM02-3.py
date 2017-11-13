@@ -1,13 +1,13 @@
 ﻿# -*- coding: utf-8 -*-
 #Atualizacao de arquivos
 print('########################################')
-print(' Ultima atualizacao 14 de outubro 2017')
+print(' Ultima atualizacao 6 de outubro 2017')
 print(' lista bibliotecas usadas pela aplicaçao')
-print(' Extracao de properties em ambiente BKS')
+print(' geracao de pids.sh para matar processos')
 print(' Ultima modificacao de : Daniel Camilo')
 print('########################################')
 
-import os, sys,re,zipfile, java,re,socket
+import os, sys,re,zipfile, java,re
 # import contextlib, zipfile,java
 # import stat,urllib,paramiko,getpass,socket, glob,fnmatch
 # from shutil import copytree
@@ -15,10 +15,7 @@ import os, sys,re,zipfile, java,re,socket
 # from xml.etree.ElementTree import Element, SubElement, ElementTree,TreeBuilder
 # import xml.etree.ElementTree as ET
 # from xml.dom.minidom import DOMImplementation, Document,parse
-# for a in Help.AdminConfig().splitlines():
-    # print('elementos %s'%a)
 
-        
 global AdminControl
 global AdminConfig
 global AdminApp
@@ -28,6 +25,7 @@ def listar(arg=0):
         print('argumento informado %s'%arg)
         arqproc = open('pids.sh','w')
         for cell in AdminConfig.list('Cell').split():
+            # print('HostName da célula %s'%AdminConfig.showAttribute(cell,'hostName'))
             for variable in AdminConfig.list('VariableSubstitutionEntry',cell).split():
                 variableName = AdminConfig.showAttribute(variable,'symbolicName')
                 if variableName == 'CELLID':
@@ -40,8 +38,10 @@ def listar(arg=0):
             for cl in clusters:
                 clName = AdminConfig.showAttribute(cl,'name')
                 arqsys.write('Cluster| ' + clName + '\n'); print('Cluster | ' + clName)
-            arqsys.write('\n-----  Servidores WAS -----\n');print('\n-----  Servidores WAS -----')
-            coleta_servidores()
+            arqsys.write('\n-----  Servidores -----\n');print('\n-----  Servidores -----')
+            for node in AdminConfig.list('Node',cell).split():
+                print(AdminConfig.showAttribute(node,'hostName'))
+                
             arqsys.write('\n-----  Servidores WEB -----\n');print('\n-----  Servidores WEB -----')
             for web in AdminTask.listServers('[-serverType WEB_SERVER ]').split():
                 arqsys.write('Web Server | ' + web.split('(')[0] + '\n'); print('Web Server | ' + web.split('(')[0])            
@@ -78,49 +78,12 @@ def listar(arg=0):
     except:
         print('nao localizado')
 
-def props(ens):
-    #Listando maquinas
-    arqhtml = open('/tmp/report.html','w')
-    arqsys.write('Leitura de properties da aplicacao %s\n'%ens)
-    coleta_servidores()
-    arqserver = open('servidores.silent','r')
-    arqhtml.write('<HTML>');arqhtml.write('<TABLE border=\"2\">')
-    arqhtml.write('<TR><TD>Servidor</TD><TD>Fachadas</TD><TD>Dumps</TD><TD>File System</TD></TR>')
-    for server in arqserver.readlines():
-        arqhtml.write('<TR>');arqhtml.write('<TD>')
-        arqsys.write('Servidor %s\n'%server)
-        arqhtml.write(server)
-        arqhtml.write('</TD>')
-        os.system('ssh -tt %s \'cat /ArquitecturaE-business/Lib/LibRigel/Conf_Aplicaciones/%s.properties\' > /tmp/server.log'%(server.strip(),ens))
-        files = open('/tmp/server.log','r')
-        arqhtml.write('<TD>')
-        for f in files.readlines():
-            if re.search('aeb.TechnicalFacades.URL_SSO',f):
-                arqsys.write('%s\n'%f);arqhtml.write('%s\n'%f)
-        files.close()
-        arqhtml.write('</TD>')
-        os.system('ssh -tt %s \'du -ch /opt/WebSphere7/AppServer/profiles/Node01/heapdump*\' > /tmp/heaps.log'%server.strip())
-        files = open('/tmp/heaps.log','r')
-        arqhtml.write('<TD>')
-        for f in files.readlines():
-            if not re.search('No such file or directory',f):
-                arqsys.write('%s\n'%f);arqhtml.write('%s\n'%f)
-            else:
-                arqsys.write('nao ha Dumps\n');arqhtml.write('nao ha Dumps\n')
-        files.close()
-        arqhtml.write('</TD>')
-        os.system('ssh -tt %s \'df -h | grep /opt/WebSphere7/AppServer/profiles\' > /tmp/profsize.log'%server.strip())
-        files = open('/tmp/profsize.log','r')
-        arqhtml.write('<TD>')
-        for f in files.readlines():
-                arqsys.write('%s\n'%f);arqhtml.write('%s\n'%f)
-        files.close()
-        arqhtml.write('</TD>')
-        arqhtml.write('</TR>')
-    arqhtml.write('</TABLE>');arqhtml.write('</HTML>')
-    arqhtml.close()
-    os.system('chmod 775 /tmp/report.html')
-    
+def props():
+    #Listando maquinas 
+    for cell in AdminConfig.list('Cell').split():
+        for node in AdminConfig.list('Node',cell).split():
+            print(AdminConfig.showAttribute(node,'hostName'))
+        
 def listarq():
     cells = AdminConfig.list('Cell').split()
     print('listando arquiteturas associadas as aplicacoes. Iniciando  ...')
@@ -137,12 +100,14 @@ def listarq():
     arqsys.write('\n')
     for app in AdminApp.list().split():
         try:
-            for lib in AdminApp.view(app, '[ -MapSharedLibForMod [[ ]]]' ).split('\n'):
+            librs=AdminApp.view(app, '[ -MapSharedLibForMod [[ ]]]' ).split('\n')    
+            for lib in librs:
                 if lib.startswith('Module:  ') and not lib.endswith('ESCE'):
                     arqsys.write('aplicacao: '+ lib[7:] + ' ; ')
                 if lib.startswith('Shared Libraries:'):
                     libraries = lib[19:]
-                    for library in libraries.split('+'):
+                    libs = libraries.split('+')
+                    for library in libs:
                         if len(library) != 0:
                             if not library.startswith('WebSphere:name=API') and not library.startswith('WebSphere:name=ALTAIR')  and not library.startswith('WebSphere:name=AppLibs_SL') and not library.startswith('WebSphere:name=LibreriaArq'):
                                 libraryTT = library[15:].split(',')
@@ -266,7 +231,7 @@ def run_atualiza():
     execfile('ens.py')
 
 def gerar(arg1):
-    arqserver = open('servidores.sh','w')
+    arqsrv = open('servidores.sh','w')
     cells = AdminConfig.list('Cell').split()
     for cell in cells:
         cellName = AdminConfig.showAttribute(cell,'name')
@@ -275,10 +240,10 @@ def gerar(arg1):
         for node in nodes:
             nodeName = AdminConfig.showAttribute(node,'name')
             nodeHostName = AdminConfig.showAttribute(node,'hostName')
-            arqserver.write('scp -rpC Conf_Aplicaciones/* '+nodeHostName+':/ArquitecturaE-business/Lib/LibRigel/Conf_Aplicaciones/\n')
-            arqserver.write('scp -rpC EarEstatico/* '+nodeHostName+':/ArquitecturaE-business/Html/EarEstatico/\n')
+            arqsrv.write('scp -rpC Conf_Aplicaciones/* '+nodeHostName+':/ArquitecturaE-business/Lib/LibRigel/Conf_Aplicaciones/\n')
+            arqsrv.write('scp -rpC EarEstatico/* '+nodeHostName+':/ArquitecturaE-business/Html/EarEstatico/\n')
     print('gerado o arquivo servidores.sh com todos os servidores preparados para copiar. Se Atende os devidos escopos ao se copiar')
-    arqserver.close()
+    arqsrv.close()
         
     print('Arquivo que contenha os pacotes %s'%arg1)
     arq_instala = open(arg1,'r')
@@ -606,58 +571,40 @@ def startapps(app1):
                     AdminControl.invoke(appManager,'startApplication',app)
                                                                
 def coleta_servidores():
-    arqserver = open('servidores.silent','w')
-    print('---- Servidores WAS ----')
-    arqsys.write('---- Servidores WAS ----\n')
-    for cell in AdminConfig.list('Cell').split():
+    arqsrv = open('servidores.silent','w')
+    cells = AdminConfig.list('Cell').split()
+    for cell in cells:
         cellName = AdminConfig.showAttribute(cell,'name')
-        for node in AdminConfig.list('Node',cell ).split():
-            servername = AdminConfig.showAttribute(node,'name')
-            if not re.search('IHS',servername):
-                nodeHostName = AdminConfig.showAttribute(node,'hostName')
-                print(nodeHostName)
-                arqsys.write('%s\n'%nodeHostName)
-                arqserver.write(nodeHostName+'\n')        
-    arqserver.close()
-    os.system('chmod 775 servidores.silent')
-    print('gerado o arquivo servidores.silent com todos os nós deste ambiente')
-
-def coleta_servidores_full():
-    arqserver = open('servidores.silent','w')
-    print('---- Servidores WAS ----')
-    arqsys.write('---- Servidores WAS ----\n')
-    for cell in AdminConfig.list('Cell').split():
-        cellName = AdminConfig.showAttribute(cell,'name')
-        for node in AdminConfig.list('Node',cell ).split():
-            servername = AdminConfig.showAttribute(node,'name')
+        print('Nome da celula ', cellName)
+        nodes = AdminConfig.list('Node',cell ).split()
+        for node in nodes:
+            nodeName = AdminConfig.showAttribute(node,'name')
             nodeHostName = AdminConfig.showAttribute(node,'hostName')
-            print(nodeHostName)
-            arqsys.write('%s\n'%nodeHostName)
-            arqserver.write(nodeHostName+'\n')        
-    arqserver.close()
-    os.system('chmod 775 servidores.silent')
+            print('No: '+ nodeName + ' -- hostname '+  nodeHostName)
+            arqsrv.write(nodeHostName+'\n')        
+    arqsrv.close()
     print('gerado o arquivo servidores.silent com todos os nós deste ambiente')
 
 def sgs(usr,pwd):
-    print('funcao SGS acionada\n Este metodo ira gerar duas rotinas. SERVIDORES.SH para o restart - necessario passar usuario e senha e uma rotina que usa o  paramiko para execucao no windows. ambas sao automaticas')
-    coleta_servidores_full()
-    arqserver=open('servidores.silent','r')
+    print('funcao SGS acionada')
+    print('este metodo ira gerar duas rotinas. SERVIDORES.SH para o restart - necessario passar usuario e senha e uma rotina que usa o  paramiko para execucao no windows. ambas sao automaticas')
+    coleta_servidores()
+    arqsrv=open('servidores.silent','r')
     arqrestart = open('servidores.py','w')
     arqrun = open('servidores.sh','w')
     arqrestart.write('import os,subprocess\n')
     try:
-        for servidor in arqserver.readlines():
-            server = servidor.split('.')[0]
-            server = server.strip()
-            # server=str(servidor).strip()
-            arqrun.write('ssh -t %s@%s \'sudo /export/arqsrv/bin/ARQSRV.sh restart\'\n'%(usr,server))
-            arqrestart.write('subprocess.call(\'ssh -t %s@%s \'sudo /export/arqsrv/bin/ARQSRV.sh restart\',shell=True) \n' %(usr,server))
+        for servidor in arqsrv.readlines():
+            server=str(servidor).strip()
+            arqrun.write('ssh -t %s@%s \'sudo /export/arqsrv/bin/./ARQSRV.sh restart\'\n'%(usr,server))
+            arqrestart.write('subprocess.call(\'ssh -t %s@%s \'sudo /export/arqsrv/bin/./ARQSRV.sh restart\',shell=True) \n' %(usr,server))
         arqrestart.close()
         arqrun.close()
     except IOError:
         print('Arquivo nao localizado')   
     os.system('chmod 775 servidores.py')
-    # os.system('python servidores.py')
+    os.system('python servidores.py')
+    
     
     arq_run = open('run_windows.py','w')
     arq_run.write('arqsys = open(\'SystemExit.log\',\'w\') \n')
@@ -676,14 +623,14 @@ def sgs(usr,pwd):
     arq_run.write('        chan=ssh.get_transport().open_session()\n')
     arq_run.write('        chan.get_pty()\n')
     arq_run.write('        f = chan.makefile()\n')
-    arq_run.write('        chan.exec_command(\'sudo /export/arqserver/bin/ARQSRV.sh stop\')\n')
+    arq_run.write('        chan.exec_command(\'sudo /export/arqsrv/bin/./ARQSRV.sh stop\')\n')
     arq_run.write('        print(f.read())\n')
     arq_run.write('        ssh.close()\n')
     arq_run.write('        ssh.connect(server,username=usr1,password=pwd1,timeout=3.0)\n')
     arq_run.write('        chan=ssh.get_transport().open_session()\n')
     arq_run.write('        chan.get_pty()\n')
     arq_run.write('        f = chan.makefile()\n')
-    arq_run.write('        chan.exec_command(\'sudo /export/arqsrv/bin/ARQSRV.sh start\')\n')
+    arq_run.write('        chan.exec_command(\'sudo /export/arqsrv/bin/./ARQSRV.sh start\')\n')
     arq_run.write('        print(f.read())\n')
     arq_run.write('        ssh.close()\n')
     arq_run.write('    except:\n')
@@ -696,7 +643,7 @@ def sgs(usr,pwd):
     arq_run.write('        chan=ssh.get_transport().open_session()\n')
     arq_run.write('        chan.get_pty()\n')
     arq_run.write('        f = chan.makefile()\n')
-    arq_run.write('        chan.exec_command(\'/sudo /export/arqsrv/bin/ARQSRV.sh status\')\n')
+    arq_run.write('        chan.exec_command(\'sudo /export/arqsrv/bin/./ARQSRV.sh status\')\n')
     arq_run.write('        arqsys.write(\' Status %s\' % chan.recv_exit_status())\n')
     arq_run.write('        print(f.read())\n')
     arq_run.write('        ssh.close()\n')
@@ -709,12 +656,12 @@ def sgs(usr,pwd):
 def repliweb(usr,pwd):
     print('este metodo ira gerar duas rotinas. SERVIDORES.SH para o restart - necessario passar usuario e senha e uma rotina que usa o  paramiko para execucao no windows. ambas sao automaticas')
     print('atualmente ela disponivel somente onde ha a biblioteca paramiko')
-    coleta_servidores_full()
+    coleta_servidores()
     arqrestart = open('servidores.sh','w')
     arqrestart.write('#/bin/sh\n')
-    arqserver=open('servidores.silent','r')
+    arqsrv=open('servidores.silent','r')
     try:
-        for servidor in arqserver.readlines():
+        for servidor in arqsrv.readlines():
             server=str(servidor).strip()
             arqrestart.write('ssh -tt %s@%s \'sudo /etc/init.d/./xinetd restart\'\n'%(usr,server))
             os.system('ssh -tt %s@%s \'sudo /etc/init.d/./xinetd restart\''%(usr,server))
@@ -1283,14 +1230,13 @@ try:
         else:
             print('necessario informar o arquivo silent para instalacao')
     elif sys.argv[0] == 'PROPS':
-        if len(sys.argv)==2:
-            ens = sys.argv[1]
-            props(ens)
-        else:
-            print('Favor informar o ensamblado do qual voce deseja extrair o properties')
-    elif sys.argv[0] == 'BIBLIOTECAS':
         if len(sys.argv)==1:
-            app1 = sys.argv[1]
+            ens = sys.argv[1]
+        props()
+    elif sys.argv[0] == 'BIBLIOTECAS':
+        app1 = sys.argv[1]
+        # if len(sys.argv)==1:
+            # ens = sys.argv[1]
         libraries(app1)
     elif sys.argv[0]== 'AJUDA':
         print('*'* 120)

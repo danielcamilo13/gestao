@@ -622,42 +622,24 @@ def coleta_servidores():
     os.system('chmod 775 servidores.silent')
     print('gerado o arquivo servidores.silent com todos os nós deste ambiente')
 
-def coleta_servidores_full():
-    arqserver = open('servidores.silent','w')
-    print('---- Servidores WAS ----')
-    arqsys.write('---- Servidores WAS ----\n')
-    for cell in AdminConfig.list('Cell').split():
-        cellName = AdminConfig.showAttribute(cell,'name')
-        for node in AdminConfig.list('Node',cell ).split():
-            servername = AdminConfig.showAttribute(node,'name')
-            nodeHostName = AdminConfig.showAttribute(node,'hostName')
-            print(nodeHostName)
-            arqsys.write('%s\n'%nodeHostName)
-            arqserver.write(nodeHostName+'\n')        
-    arqserver.close()
-    os.system('chmod 775 servidores.silent')
-    print('gerado o arquivo servidores.silent com todos os nós deste ambiente')
-
 def sgs(usr,pwd):
     print('funcao SGS acionada\n Este metodo ira gerar duas rotinas. SERVIDORES.SH para o restart - necessario passar usuario e senha e uma rotina que usa o  paramiko para execucao no windows. ambas sao automaticas')
-    coleta_servidores_full()
+    coleta_servidores()
     arqserver=open('servidores.silent','r')
     arqrestart = open('servidores.py','w')
     arqrun = open('servidores.sh','w')
     arqrestart.write('import os,subprocess\n')
     try:
         for servidor in arqserver.readlines():
-            server = servidor.split('.')[0]
-            server = server.strip()
-            # server=str(servidor).strip()
-            arqrun.write('ssh -t %s@%s \'sudo /export/arqsrv/bin/ARQSRV.sh restart\'\n'%(usr,server))
-            arqrestart.write('subprocess.call(\'ssh -t %s@%s \'sudo /export/arqsrv/bin/ARQSRV.sh restart\',shell=True) \n' %(usr,server))
+            server=str(servidor).strip()
+            arqrun.write('ssh -t %s@%s \'sudo /export/arqserver/bin/./ARQSRV.sh restart\'\n'%(usr,server))
+            arqrestart.write('subprocess.call(\'ssh -t %s@%s \'sudo /export/arqserver/bin/./ARQSRV.sh restart\',shell=True) \n' %(usr,server))
         arqrestart.close()
         arqrun.close()
     except IOError:
         print('Arquivo nao localizado')   
     os.system('chmod 775 servidores.py')
-    # os.system('python servidores.py')
+    os.system('python servidores.py')
     
     arq_run = open('run_windows.py','w')
     arq_run.write('arqsys = open(\'SystemExit.log\',\'w\') \n')
@@ -676,14 +658,14 @@ def sgs(usr,pwd):
     arq_run.write('        chan=ssh.get_transport().open_session()\n')
     arq_run.write('        chan.get_pty()\n')
     arq_run.write('        f = chan.makefile()\n')
-    arq_run.write('        chan.exec_command(\'sudo /export/arqserver/bin/ARQSRV.sh stop\')\n')
+    arq_run.write('        chan.exec_command(\'sudo /export/arqserver/bin/./ARQSRV.sh stop\')\n')
     arq_run.write('        print(f.read())\n')
     arq_run.write('        ssh.close()\n')
     arq_run.write('        ssh.connect(server,username=usr1,password=pwd1,timeout=3.0)\n')
     arq_run.write('        chan=ssh.get_transport().open_session()\n')
     arq_run.write('        chan.get_pty()\n')
     arq_run.write('        f = chan.makefile()\n')
-    arq_run.write('        chan.exec_command(\'sudo /export/arqsrv/bin/ARQSRV.sh start\')\n')
+    arq_run.write('        chan.exec_command(\'sudo /export/arqserver/bin/./ARQSRV.sh start\')\n')
     arq_run.write('        print(f.read())\n')
     arq_run.write('        ssh.close()\n')
     arq_run.write('    except:\n')
@@ -696,7 +678,7 @@ def sgs(usr,pwd):
     arq_run.write('        chan=ssh.get_transport().open_session()\n')
     arq_run.write('        chan.get_pty()\n')
     arq_run.write('        f = chan.makefile()\n')
-    arq_run.write('        chan.exec_command(\'/sudo /export/arqsrv/bin/ARQSRV.sh status\')\n')
+    arq_run.write('        chan.exec_command(\'sudo /export/arqserver/bin/./ARQSRV.sh status\')\n')
     arq_run.write('        arqsys.write(\' Status %s\' % chan.recv_exit_status())\n')
     arq_run.write('        print(f.read())\n')
     arq_run.write('        ssh.close()\n')
@@ -709,7 +691,7 @@ def sgs(usr,pwd):
 def repliweb(usr,pwd):
     print('este metodo ira gerar duas rotinas. SERVIDORES.SH para o restart - necessario passar usuario e senha e uma rotina que usa o  paramiko para execucao no windows. ambas sao automaticas')
     print('atualmente ela disponivel somente onde ha a biblioteca paramiko')
-    coleta_servidores_full()
+    coleta_servidores()
     arqrestart = open('servidores.sh','w')
     arqrestart.write('#/bin/sh\n')
     arqserver=open('servidores.silent','r')
